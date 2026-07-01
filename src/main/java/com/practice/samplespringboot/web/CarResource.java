@@ -11,4 +11,9 @@ public class CarResource {
         return "Test";
     }
 
+    @GetMapping(value = "/test2")
+    public String test2(){
+        return "Test2";
+    }
+
 }
