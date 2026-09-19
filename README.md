@@ -79,11 +79,8 @@ Follow these simple steps to demonstrate real-time transaction streaming and dyn
    ```bash
    docker-compose up -d
    ```
-2. Launch the Spring Boot application:
-   ```bash
-   ./mvnw spring-boot:run
-   ```
-3. Open the Web Dashboard in your browser:
+   
+2. Open the Web Dashboard in your browser:
    ```
    http://localhost:8080
    ```
