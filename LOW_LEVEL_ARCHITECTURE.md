@@ -16,28 +16,8 @@ Banks handle millions of money transfers daily. Criminals attempt to disguise il
 
 ### End-to-End Data Flow Diagram (Mermaid)
 
-```mermaid
-graph TD
-    UI_Dashboard["🌐 Web Dashboard (Browser UI)"] -->|1. Upload CSV / Change Rules| REST_Controller["⚡ REST API Layer<br>(IngestionController & RuleConfigController)"]
-    
-    REST_Controller -->|2. Ingest Customers/Accounts| Postgres_DB[("🐘 PostgreSQL DB<br>(customers, accounts, rule_configs, alerts)")]
-    REST_Controller -->|3. Publish Transactions| Kafka_Txn["📬 Kafka Topic: 'transactions'"]
-    
-    Kafka_Txn -->|4. Consume Stream| Kafka_Consumer["⚙️ TransactionConsumer"]
-    Kafka_Consumer -->|5. Evaluate AML Rules| Detection_Engine["🧠 DetectionEngineService"]
-    
-    Rule_Cache["🔄 RuleConfigCacheService<br>(Polls DB every 10s)"] -.->|6. Provides Live Rule Parameters| Detection_Engine
-    Postgres_DB <==>|Polls Every 10s| Rule_Cache
-    
-    Detection_Engine -->|7. Save Generated Alert| Postgres_DB
-    Detection_Engine -->|8. Publish Alert| Kafka_Alert["📢 Kafka Topic: 'alerts'"]
-    
-    Kafka_Alert -->|9. Consume Alert| WS_Listener["🔌 AlertWebSocketListener"]
-    WS_Listener -->|10. Broadcast STOMP Message| UI_Dashboard
-    
-    UI_Dashboard -->|11. Bottom-Right Corner Toast Popup| Analyst["👤 Compliance Analyst"]
-```
 
+![architecture.png](architecture.png)
 ---
 
 ### Detailed Service Box Descriptions
