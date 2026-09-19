@@ -130,3 +130,8 @@ Now let's test lowering the threshold for **`LARGE_TRANSACTION`** from $\$10,000
 | **`RAPID_FUND_MOVEMENT`** | Flag layering ($\ge 80\%$ funds exiting shortly after deposit) | $\ge 80\%$ exit | 48h | 45 |
 | **`HIGH_RISK_JURISDICTION`** | Flag transfer to/from sanctioned countries | Country Watchlist | 0h | 60 |
 | **`BEHAVIORAL_DEVIATION`** | Flag volume spike exceeding historical baseline | $> 3\times$ avg balance | 90 days | 35 |
+
+## 6. Ui screen shorts
+![img.png](img.png)
+
+![img_1.png](img_1.png)![img_2.png](img_2.png)![img_3.png](img_3.png)
