@@ -1,0 +1,793 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sentinel AML - Real-Time Money Laundering Detection</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/sockjs-client@1/dist/sockjs.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/stompjs@2.3.3/lib/stomp.min.js"></script>
+    <style>
+        :root {
+            --bg-dark: #0f172a;
+            --card-bg: #1e293b;
+            --card-border: #334155;
+            --accent-blue: #38bdf8;
+            --accent-purple: #818cf8;
+            --danger-red: #ef4444;
+            --warning-amber: #f59e0b;
+            --success-green: #10b981;
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Inter', sans-serif;
+        }
+
+        body {
+            background-color: var(--bg-dark);
+            color: var(--text-main);
+            padding-bottom: 50px;
+        }
+
+        header {
+            background: linear-gradient(90deg, #1e293b 0%, #0f172a 100%);
+            border-bottom: 1px solid var(--card-border);
+            padding: 1rem 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.4);
+        }
+
+        .logo-container {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .logo-icon {
+            width: 36px;
+            height: 36px;
+            background: linear-gradient(135deg, var(--accent-blue), var(--accent-purple));
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 1.2rem;
+        }
+
+        .header-title h1 {
+            font-size: 1.4rem;
+            font-weight: 700;
+            background: linear-gradient(90deg, #38bdf8, #818cf8);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .header-title p {
+            font-size: 0.8rem;
+            color: var(--text-muted);
+        }
+
+        .header-actions {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .ws-badge {
+            font-size: 0.8rem;
+            padding: 6px 12px;
+            border-radius: 20px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            background: rgba(16, 185, 129, 0.15);
+            color: var(--success-green);
+            border: 1px solid rgba(16, 185, 129, 0.3);
+        }
+
+        .ws-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background-color: var(--success-green);
+            box-shadow: 0 0 8px var(--success-green);
+            animation: pulse 1.5s infinite;
+        }
+
+        @keyframes pulse {
+            0% { opacity: 0.4; }
+            50% { opacity: 1; }
+            100% { opacity: 0.4; }
+        }
+
+        .btn-swagger {
+            background: rgba(56, 189, 248, 0.1);
+            color: var(--accent-blue);
+            border: 1px solid var(--accent-blue);
+            padding: 8px 16px;
+            border-radius: 6px;
+            text-decoration: none;
+            font-size: 0.85rem;
+            font-weight: 500;
+            transition: all 0.2s;
+        }
+
+        .btn-swagger:hover {
+            background: var(--accent-blue);
+            color: #0f172a;
+        }
+
+        .main-container {
+            max-width: 1400px;
+            margin: 2rem auto;
+            padding: 0 1rem;
+            display: flex;
+            flex-direction: column;
+            gap: 2rem;
+        }
+
+        .grid-stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 1.5rem;
+        }
+
+        .stat-card {
+            background: var(--card-bg);
+            border: 1px solid var(--card-border);
+            border-radius: 12px;
+            padding: 1.25rem;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+
+        .stat-title {
+            font-size: 0.85rem;
+            color: var(--text-muted);
+            margin-bottom: 8px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .stat-value {
+            font-size: 2rem;
+            font-weight: 700;
+        }
+
+        .section-card {
+            background: var(--card-bg);
+            border: 1px solid var(--card-border);
+            border-radius: 12px;
+            padding: 1.5rem;
+        }
+
+        .section-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.2rem;
+            border-bottom: 1px solid var(--card-border);
+            padding-bottom: 0.8rem;
+        }
+
+        .section-title {
+            font-size: 1.1rem;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .ingest-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 1.2rem;
+        }
+
+        .ingest-box {
+            background: rgba(15, 23, 42, 0.6);
+            border: 1px dashed var(--card-border);
+            padding: 1rem;
+            border-radius: 8px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .ingest-box h4 {
+            font-size: 0.95rem;
+            color: var(--accent-blue);
+        }
+
+        input[type="file"] {
+            font-size: 0.8rem;
+            color: var(--text-muted);
+        }
+
+        .btn-action {
+            background: linear-gradient(135deg, var(--accent-blue), var(--accent-purple));
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.85rem;
+            font-weight: 600;
+            transition: opacity 0.2s;
+        }
+
+        .btn-action:hover {
+            opacity: 0.9;
+        }
+
+        .btn-secondary {
+            background: rgba(255, 255, 255, 0.1);
+            color: var(--text-main);
+            border: 1px solid var(--card-border);
+            padding: 6px 12px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.8rem;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.9rem;
+        }
+
+        th, td {
+            padding: 12px 16px;
+            text-align: left;
+            border-bottom: 1px solid var(--card-border);
+        }
+
+        th {
+            background: rgba(15, 23, 42, 0.8);
+            color: var(--text-muted);
+            font-weight: 600;
+            font-size: 0.8rem;
+            text-transform: uppercase;
+        }
+
+        tr:hover {
+            background: rgba(255, 255, 255, 0.02);
+        }
+
+        .badge-risk {
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-size: 0.75rem;
+            font-weight: 700;
+            display: inline-block;
+        }
+
+        .risk-high { background: rgba(239, 68, 68, 0.2); color: var(--danger-red); border: 1px solid var(--danger-red); }
+        .risk-mid { background: rgba(245, 158, 11, 0.2); color: var(--warning-amber); border: 1px solid var(--warning-amber); }
+        .risk-low { background: rgba(16, 185, 129, 0.2); color: var(--success-green); border: 1px solid var(--success-green); }
+
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.8);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .modal-body {
+            background: var(--card-bg);
+            border: 1px solid var(--card-border);
+            border-radius: 12px;
+            width: 90%;
+            max-width: 700px;
+            padding: 2rem;
+            display: flex;
+            flex-direction: column;
+            gap: 1.2rem;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+        }
+
+        .rule-input {
+            background: var(--bg-dark);
+            border: 1px solid var(--card-border);
+            color: white;
+            padding: 6px 10px;
+            border-radius: 4px;
+            width: 100px;
+        }
+
+        /* Fixed Bottom-Right Popup Toast Notifications Container */
+        .toast-container {
+            position: fixed;
+            bottom: 24px;
+            right: 24px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            z-index: 9999;
+            max-width: 420px;
+            width: 90%;
+            pointer-events: none;
+        }
+
+        .toast-card {
+            pointer-events: auto;
+            background: rgba(30, 41, 59, 0.95);
+            backdrop-filter: blur(10px);
+            border: 1px solid var(--danger-red);
+            box-shadow: 0 10px 25px rgba(239, 68, 68, 0.35), 0 0 15px rgba(0,0,0,0.5);
+            border-radius: 12px;
+            padding: 1rem 1.25rem;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            animation: slideInRight 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+            transition: all 0.3s ease;
+        }
+
+        @keyframes slideInRight {
+            from { transform: translateX(120%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+
+        .toast-card.fade-out {
+            opacity: 0;
+            transform: translateX(100%);
+        }
+
+        .toast-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .toast-title {
+            font-size: 0.9rem;
+            font-weight: 700;
+            color: var(--danger-red);
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .toast-close {
+            background: transparent;
+            border: none;
+            color: var(--text-muted);
+            font-size: 1.2rem;
+            cursor: pointer;
+            line-height: 1;
+        }
+
+        .toast-close:hover {
+            color: white;
+        }
+
+        .toast-body {
+            font-size: 0.85rem;
+            color: var(--text-main);
+            line-height: 1.4;
+        }
+
+        .toast-footer {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 4px;
+        }
+    </style>
+</head>
+<body>
+
+<header>
+    <div class="logo-container">
+        <div class="logo-icon">S</div>
+        <div class="header-title">
+            <h1>Sentinel AML Platform</h1>
+            <p>Real-Time Money Laundering Detection & Case Management</p>
+        </div>
+    </div>
+    <div class="header-actions">
+        <div class="ws-badge">
+            <div class="ws-dot"></div>
+            <span id="ws-status">Kafka & WebSocket Streaming: ACTIVE</span>
+        </div>
+        <a href="/swagger-ui/index.html" target="_blank" class="btn-swagger">Swagger API Specs</a>
+    </div>
+</header>
+
+<div class="main-container">
+
+    <!-- Stats Cards -->
+    <div class="grid-stats">
+        <div class="stat-card">
+            <div class="stat-title">Total Alerts</div>
+            <div class="stat-value" id="stat-total">0</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-title">New / Unreviewed</div>
+            <div class="stat-value" id="stat-new" style="color: var(--warning-amber);">0</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-title">High Risk (≥ 70)</div>
+            <div class="stat-value" id="stat-high" style="color: var(--danger-red);">0</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-title">Confirmed Suspicious</div>
+            <div class="stat-value" id="stat-suspicious" style="color: var(--danger-red);">0</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-title">False Positives</div>
+            <div class="stat-value" id="stat-false" style="color: var(--success-green);">0</div>
+        </div>
+    </div>
+
+    <!-- Data Ingestion Section -->
+    <div class="section-card">
+        <div class="section-header">
+            <div class="section-title">📁 Data Ingestion Pipeline (Batch & Kafka Stream)</div>
+        </div>
+        <div class="ingest-grid">
+            <div class="ingest-box">
+                <h4>1. Customers CSV Ingestion</h4>
+                <input type="file" id="file-customers" accept=".csv">
+                <button class="btn-action" onclick="uploadCsv('/api/v1/ingest/customers', 'file-customers')">Upload Customers</button>
+            </div>
+            <div class="ingest-box">
+                <h4>2. Accounts CSV Ingestion</h4>
+                <input type="file" id="file-accounts" accept=".csv">
+                <button class="btn-action" onclick="uploadCsv('/api/v1/ingest/accounts', 'file-accounts')">Upload Accounts</button>
+            </div>
+            <div class="ingest-box">
+                <h4>3. Transactions Stream (Kafka Pipeline)</h4>
+                <input type="file" id="file-transactions" accept=".csv">
+                <button class="btn-action" onclick="uploadCsv('/api/v1/ingest/transactions', 'file-transactions')">Stream Transactions to Kafka</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Dynamic Rule Configuration Section -->
+    <div class="section-card">
+        <div class="section-header">
+            <div class="section-title">⚙️ Dynamic AML Detection Rules (DB Polled every 10s)</div>
+            <button class="btn-secondary" onclick="loadRules()">Refresh Rules</button>
+        </div>
+        <table>
+            <thead>
+                <tr>
+                    <th>Rule Name</th>
+                    <th>Description</th>
+                    <th>Enabled</th>
+                    <th>Threshold Amount ($)</th>
+                    <th>Time Window (h)</th>
+                    <th>Risk Weight</th>
+                    <th>Action</th>
+                </tr>
+            </thead>
+            <tbody id="rules-table-body">
+                <!-- Dynamically populated -->
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Real-Time Alert Queue Section -->
+    <div class="section-card">
+        <div class="section-header">
+            <div class="section-title">🚨 Real-Time Alert Queue (Sorted by Risk Score)</div>
+            <div style="display: flex; gap: 10px; align-items: center;">
+                <label style="font-size: 0.85rem; color: var(--text-muted); font-weight: 500;">
+                    <input type="checkbox" id="mask-pii-check" checked onchange="loadAlerts()"> Mask Sensitive PII
+                </label>
+                <button class="btn-secondary" onclick="loadAlerts()">Refresh Alerts</button>
+            </div>
+        </div>
+        <table>
+            <thead>
+                <tr>
+                    <th>Alert ID</th>
+                    <th>Risk Score</th>
+                    <th>Customer Name</th>
+                    <th>Account ID</th>
+                    <th>Triggered Rule</th>
+                    <th>Status</th>
+                    <th>Timestamp</th>
+                    <th>Action</th>
+                </tr>
+            </thead>
+            <tbody id="alerts-table-body">
+                <!-- Dynamically populated -->
+            </tbody>
+        </table>
+    </div>
+
+</div>
+
+<!-- Bottom-Right Corner Popup Toast Container -->
+<div id="toast-container" class="toast-container"></div>
+
+<!-- Case Disposition Modal -->
+<div id="disposition-modal" class="modal-overlay">
+    <div class="modal-body">
+        <h2 style="font-size: 1.2rem; color: var(--accent-blue);">Compliance Case Disposition</h2>
+        <div id="modal-content" style="font-size: 0.9rem; display: flex; flex-direction: column; gap: 8px;"></div>
+        
+        <div style="display: flex; flex-direction: column; gap: 10px; margin-top: 10px;">
+            <label style="font-size: 0.85rem; color: var(--text-muted);">Disposition Status:</label>
+            <select id="disp-status" style="background: var(--bg-dark); color: white; border: 1px solid var(--card-border); padding: 8px; border-radius: 4px;">
+                <option value="CONFIRMED_SUSPICIOUS">CONFIRMED_SUSPICIOUS (File SAR)</option>
+                <option value="FALSE_POSITIVE">FALSE_POSITIVE (Clear Alert)</option>
+                <option value="IN_REVIEW">IN_REVIEW (Escalate)</option>
+                <option value="CLOSED">CLOSED</option>
+            </select>
+
+            <label style="font-size: 0.85rem; color: var(--text-muted);">Analyst Notes & Evidence Summary:</label>
+            <textarea id="disp-reason" rows="3" style="background: var(--bg-dark); color: white; border: 1px solid var(--card-border); padding: 8px; border-radius: 4px;" placeholder="Provide justification for compliance audit logging..."></textarea>
+
+            <label style="font-size: 0.85rem; color: var(--text-muted);">Analyst ID / Name:</label>
+            <input type="text" id="disp-analyst" value="ANALYST_SARAH_M" style="background: var(--bg-dark); color: white; border: 1px solid var(--card-border); padding: 8px; border-radius: 4px;">
+        </div>
+
+        <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 15px;">
+            <button class="btn-secondary" onclick="closeModal()">Cancel</button>
+            <button class="btn-action" onclick="submitDisposition()">Save Disposition</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    let activeAlertId = null;
+
+    // Connect WebSocket via SockJS + STOMP
+    function connectWebSocket() {
+        const socket = new SockJS('/ws-sentinel');
+        const stompClient = Stomp.over(socket);
+        stompClient.debug = null; // Quiet console
+        stompClient.connect({}, function (frame) {
+            document.getElementById('ws-status').innerText = 'Kafka & WebSocket Streaming: CONNECTED';
+            stompClient.subscribe('/topic/alerts', function (alertMessage) {
+                const alert = JSON.parse(alertMessage.body);
+                showCornerPopupAlert(alert);
+                loadAlerts();
+                loadStats();
+            });
+        }, function (error) {
+            document.getElementById('ws-status').innerText = 'Kafka & WebSocket: RECONNECTING...';
+            setTimeout(connectWebSocket, 5000);
+        });
+    }
+
+    // Display Popup Notification Toast in Bottom-Right Corner
+    function showCornerPopupAlert(alert) {
+        const container = document.getElementById('toast-container');
+        const toast = document.createElement('div');
+        toast.className = 'toast-card';
+        
+        let badgeClass = alert.riskScore >= 70 ? 'risk-high' : (alert.riskScore >= 45 ? 'risk-mid' : 'risk-low');
+        
+        toast.innerHTML = `
+            <div class="toast-header">
+                <div class="toast-title">
+                    🚨 REAL-TIME ALERT: ${alert.alertId}
+                </div>
+                <button class="toast-close" onclick="dismissToast(this.parentElement.parentElement)">&times;</button>
+            </div>
+            <div class="toast-body">
+                <div><strong>Rules Triggered:</strong> <span style="color: var(--accent-blue);">${alert.triggeredRule}</span></div>
+                <div style="font-size: 0.8rem; color: var(--text-muted); margin-top: 4px;">
+                    Customer: <strong>${alert.customerId}</strong> | Account: <strong>${alert.accountId}</strong>
+                </div>
+            </div>
+            <div class="toast-footer">
+                <span class="badge-risk ${badgeClass}">Risk Score: ${alert.riskScore}/100</span>
+                <button class="btn-action" style="padding: 4px 10px; font-size: 0.75rem;" onclick="dismissToast(this.parentElement.parentElement); openCaseModal('${alert.alertId}');">Review Case &rarr;</button>
+            </div>
+        `;
+
+        container.appendChild(toast);
+
+        // Auto dismiss after 9 seconds
+        setTimeout(() => {
+            dismissToast(toast);
+        }, 9000);
+    }
+
+    function dismissToast(toastEl) {
+        if (!toastEl || toastEl.classList.contains('fade-out')) return;
+        toastEl.classList.add('fade-out');
+        setTimeout(() => {
+            if (toastEl.parentNode) toastEl.parentNode.removeChild(toastEl);
+        }, 300);
+    }
+
+    async function loadStats() {
+        try {
+            const res = await fetch('/api/v1/dashboard/stats');
+            const data = await res.json();
+            document.getElementById('stat-total').innerText = data.totalAlerts || 0;
+            document.getElementById('stat-new').innerText = data.newAlerts || 0;
+            document.getElementById('stat-high').innerText = data.highRiskAlerts || 0;
+            document.getElementById('stat-suspicious').innerText = data.confirmedSuspicious || 0;
+            document.getElementById('stat-false').innerText = data.falsePositives || 0;
+        } catch (e) {
+            console.error('Failed to load stats', e);
+        }
+    }
+
+    async function loadRules() {
+        try {
+            const res = await fetch('/api/v1/rules');
+            const rules = await res.json();
+            const tbody = document.getElementById('rules-table-body');
+            tbody.innerHTML = '';
+            rules.forEach(rule => {
+                tbody.innerHTML += `
+                    <tr>
+                        <td><strong>${rule.ruleName}</strong></td>
+                        <td style="color: var(--text-muted);">${rule.description}</td>
+                        <td>
+                            <input type="checkbox" id="rule-enabled-${rule.ruleName}" ${rule.enabled ? 'checked' : ''}>
+                        </td>
+                        <td>
+                            <input type="number" step="0.01" class="rule-input" id="rule-thresh-${rule.ruleName}" value="${rule.thresholdAmount || 0}">
+                        </td>
+                        <td>
+                            <input type="number" class="rule-input" id="rule-window-${rule.ruleName}" value="${rule.timeWindowHours || 0}">
+                        </td>
+                        <td>
+                            <input type="number" class="rule-input" id="rule-weight-${rule.ruleName}" value="${rule.riskWeight || 0}">
+                        </td>
+                        <td>
+                            <button class="btn-action" style="padding: 4px 10px; font-size: 0.75rem;" onclick="saveRule('${rule.ruleName}')">Save</button>
+                        </td>
+                    </tr>
+                `;
+            });
+        } catch (e) {
+            console.error('Failed to load rules', e);
+        }
+    }
+
+    async function saveRule(ruleName) {
+        const enabled = document.getElementById(`rule-enabled-${ruleName}`).checked;
+        const thresholdAmount = parseFloat(document.getElementById(`rule-thresh-${ruleName}`).value);
+        const timeWindowHours = parseInt(document.getElementById(`rule-window-${ruleName}`).value);
+        const riskWeight = parseInt(document.getElementById(`rule-weight-${ruleName}`).value);
+
+        try {
+            const res = await fetch(`/api/v1/rules/${ruleName}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ enabled, thresholdAmount, timeWindowHours, riskWeight, ruleName })
+            });
+            if (res.ok) {
+                alert(`Rule [${ruleName}] updated successfully! Changes take effect within 10s via DB polling.`);
+                loadRules();
+            }
+        } catch (e) {
+            alert('Failed to save rule update');
+        }
+    }
+
+    async function loadAlerts() {
+        const mask = document.getElementById('mask-pii-check').checked;
+        try {
+            const res = await fetch(`/api/v1/alerts?maskPII=${mask}`);
+            const alerts = await res.json();
+            const tbody = document.getElementById('alerts-table-body');
+            tbody.innerHTML = '';
+            if (alerts.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="8" style="text-align: center; color: var(--text-muted);">No alerts generated yet. Stream transactions to evaluate rules.</td></tr>`;
+                return;
+            }
+            alerts.forEach(alert => {
+                let badgeClass = alert.riskScore >= 70 ? 'risk-high' : (alert.riskScore >= 45 ? 'risk-mid' : 'risk-low');
+                tbody.innerHTML += `
+                    <tr>
+                        <td><strong>${alert.alertId}</strong></td>
+                        <td><span class="badge-risk ${badgeClass}">${alert.riskScore} / 100</span></td>
+                        <td>${alert.customerName || alert.customerId}</td>
+                        <td>${alert.accountId}</td>
+                        <td style="color: var(--accent-blue); font-weight: 500;">${alert.triggeredRule}</td>
+                        <td><span style="font-weight: 600; font-size: 0.8rem;">${alert.status}</span></td>
+                        <td style="color: var(--text-muted); font-size: 0.8rem;">${new Date(alert.createdAt).toLocaleString()}</td>
+                        <td>
+                            <button class="btn-action" style="padding: 4px 10px; font-size: 0.75rem;" onclick="openCaseModal('${alert.alertId}')">Review</button>
+                        </td>
+                    </tr>
+                `;
+            });
+        } catch (e) {
+            console.error('Failed to load alerts', e);
+        }
+    }
+
+    async function uploadCsv(url, fileInputId) {
+        const input = document.getElementById(fileInputId);
+        if (!input.files || input.files.length === 0) {
+            alert('Please select a CSV file first');
+            return;
+        }
+        const formData = new FormData();
+        formData.append('file', input.files[0]);
+        try {
+            const res = await fetch(url, { method: 'POST', body: formData });
+            const data = await res.json();
+            alert(data.message || 'Ingestion complete!');
+            loadAlerts();
+            loadStats();
+        } catch (e) {
+            alert('Error during CSV upload');
+        }
+    }
+
+    async function openCaseModal(alertId) {
+        activeAlertId = alertId;
+        try {
+            const res = await fetch(`/api/v1/alerts/${alertId}`);
+            const data = await res.json();
+            const alert = data.alert;
+            const customer = data.customer || {};
+
+            document.getElementById('modal-content').innerHTML = `
+                <div><strong>Alert ID:</strong> ${alert.alertId} | <strong>Risk Score:</strong> ${alert.riskScore}/100</div>
+                <div><strong>Customer Unmasked:</strong> ${customer.firstName || ''} ${customer.lastName || ''} (${alert.customerId})</div>
+                <div><strong>Email:</strong> ${customer.email || 'N/A'} | <strong>KYC:</strong> ${customer.kycStatus || 'VERIFIED'} | <strong>Rating:</strong> ${customer.riskRating || 'MEDIUM'}</div>
+                <div style="background: rgba(15,23,42,0.8); padding: 10px; border-radius: 6px; border: 1px solid var(--card-border);">
+                    <strong style="color: var(--accent-blue);">Triggered AML Rules:</strong> ${alert.triggeredRule}<br>
+                    <strong style="color: var(--warning-amber);">Evidence & Txn Details:</strong> ${alert.evidenceDetails}
+                </div>
+            `;
+            document.getElementById('disp-status').value = alert.status || 'CONFIRMED_SUSPICIOUS';
+            document.getElementById('disp-reason').value = alert.dispositionReason || '';
+            document.getElementById('disposition-modal').style.display = 'flex';
+        } catch (e) {
+            alert('Error loading case detail');
+        }
+    }
+
+    function closeModal() {
+        document.getElementById('disposition-modal').style.display = 'none';
+    }
+
+    async function submitDisposition() {
+        if (!activeAlertId) return;
+        const status = document.getElementById('disp-status').value;
+        const reason = document.getElementById('disp-reason').value;
+        const analystId = document.getElementById('disp-analyst').value;
+
+        try {
+            const res = await fetch(`/api/v1/alerts/${activeAlertId}/disposition`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ status, reason, analystId })
+            });
+            if (res.ok) {
+                closeModal();
+                loadAlerts();
+                loadStats();
+            }
+        } catch (e) {
+            alert('Failed to submit disposition');
+        }
+    }
+
+    // Initialize on page load
+    window.onload = function() {
+        connectWebSocket();
+        loadStats();
+        loadRules();
+        loadAlerts();
+    };
+</script>
+
+</body>
+</html>

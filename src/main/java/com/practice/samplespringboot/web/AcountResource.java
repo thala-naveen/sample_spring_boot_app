@@ -4,16 +4,14 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
-public class CarResource {
+public class AcountResource {
 
     @GetMapping(value = "/test")
     public String test(){
         return "Test";
     }
 
-    @GetMapping(value = "/test2")
-    public String test2(){
-        return "Test2";
-    }
+
+
 
 }
